@@ -78,7 +78,7 @@ public class Main {
             BufferedReader bufferedReader = new BufferedReader(new FileReader(filepath));
             //Variables to get an average
             String st;
-            ArrayList<Integer> list = new ArrayList<Integer>();
+            ArrayList<Integer> list = new ArrayList<>();
 
             // Condition holds true till
             // there is character in a string
