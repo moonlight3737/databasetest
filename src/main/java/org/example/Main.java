@@ -34,6 +34,7 @@ public class Main {
             System.out.println("Connection created");
             BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter("results.txt"));
             ScriptRunner scriptRunner = new ScriptRunner(con);
+            scriptRunner.setLogWriter(null);
 
             //Creating the Statement
             Statement stmt = con.createStatement();
@@ -43,8 +44,6 @@ public class Main {
                     //SQL script
                     String script_path = String.format("path/%sScript.sql", statement);
                     Reader table = new BufferedReader(new FileReader(script_path));
-                    //Script output to console turn off
-                    scriptRunner.setLogWriter(null);
 
                     long start_time = System.currentTimeMillis();
                     //Runs the script
