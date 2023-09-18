@@ -42,14 +42,14 @@ public class Main {
                 //Running and Timing the Script
                 for (int i = 0; i < 100; i++) {
                     //SQL script
-                    String script_path = String.format("path/%sScript.sql", statement);
-                    Reader table = new BufferedReader(new FileReader(script_path));
+                    String scriptPath = String.format("queries/%sScript.sql", statement);
+                    Reader statementQuery = new BufferedReader(new FileReader(scriptPath));
 
-                    long start_time = System.currentTimeMillis();
+                    long startTime = System.currentTimeMillis();
                     //Runs the script
-                    scriptRunner.runScript(table);
-                    long end_time = System.currentTimeMillis();
-                    long duration = (end_time - start_time);
+                    scriptRunner.runScript(statementQuery);
+                    long endTime = System.currentTimeMillis();
+                    long duration = (endTime - startTime);
                     bufferedWriter.write(String.valueOf(duration));
                     bufferedWriter.newLine();
                 }
