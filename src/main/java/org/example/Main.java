@@ -10,62 +10,63 @@ import org.apache.ibatis.jdbc.ScriptRunner;
 
 public class Main {
     public static void main(String[] args) {
-        String[] STATEMENTS = {"insert", "select", "update", "delete" };
+        String[] STATEMENTS = { "insert", "select", "update", "delete" };
+        String[] DATABASES = { "mariaDB", "mySQL", "postgreSQL" };
+        int[] PORTS = { 8009, 8010, 8008 };
 
-        try {
-            //MySQL Driver
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            String url = "jdbc:mysql://localhost:8010";
-            Connection mySqlConnection = DriverManager.getConnection(url, "root", null);
+        for (int i = 0; i < DATABASES.length; i++) {
+            String databaseName = DATABASES[i];
+            int port = PORTS[i];
+            String filepath = String.format("src\\main\\resources\\org\\example\\results\\%sResults.txt", databaseName);
 
-            //MariaDB
-            Connection mariaDBConnection = DriverManager.getConnection(
-                    "jdbc:mariadb://localhost:8009",
-                    "root", null
-            );
+            try {
+                //MySQL Driver
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                String url = String.format("jdbc:%s://localhost:%s/testing", databaseName.toLowerCase(), port);
+                String user = databaseName.equals("postgreSQL") ? "postgres" : "root";
+                Connection connection = DriverManager.getConnection(url, user, null);
 
-            //Postgresql
-            Class.forName("org.postgresql.Driver");
-            Connection con = DriverManager.getConnection(
-                    "jdbc:postgresql://localhost:8008/",
-                    "postgres", null
-            );
+                System.out.println("Connection created");
+                BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filepath));
+                ScriptRunner scriptRunner = new ScriptRunner(connection);
+                scriptRunner.setLogWriter(null);
 
-            System.out.println("Connection created");
-            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter("results.txt"));
-            ScriptRunner scriptRunner = new ScriptRunner(con);
-            scriptRunner.setLogWriter(null);
+                // Create table
+                String createScriptPath = "src\\main\\resources\\org\\example\\queries\\createScript.sql";
+                Reader createTable = new BufferedReader(new FileReader(createScriptPath));
+                scriptRunner.runScript(createTable);
 
-            //Creating the Statement
-            Statement stmt = con.createStatement();
-            for (String statement: STATEMENTS) {
-                //Running and Timing the Script
-                for (int i = 0; i < 100; i++) {
-                    //SQL script
-                    String scriptPath = String.format("queries/%sScript.sql", statement);
-                    Reader statementQuery = new BufferedReader(new FileReader(scriptPath));
+                //Creating the Statement
+                Statement stmt = connection.createStatement();
+                for (String statement: STATEMENTS) {
+                    System.out.printf("Testing %s!\n", statement);
+                    //Running and Timing the Script
+                    for (int j = 0; j < 10_000; j++) {
+                        //SQL script
+                        String scriptPath = String.format("src\\main\\resources\\org\\example\\queries\\%sScript.sql", statement);
+                        Reader statementQuery = new BufferedReader(new FileReader(scriptPath));
 
-                    long startTime = System.currentTimeMillis();
-                    //Runs the script
-                    scriptRunner.runScript(statementQuery);
-                    long endTime = System.currentTimeMillis();
-                    long duration = (endTime - startTime);
-                    bufferedWriter.write(String.valueOf(duration));
-                    bufferedWriter.newLine();
+                        long startTime = System.currentTimeMillis();
+                        //Runs the script
+                        scriptRunner.runScript(statementQuery);
+                        long endTime = System.currentTimeMillis();
+                        long duration = (endTime - startTime);
+                        bufferedWriter.write(String.valueOf(duration));
+                        bufferedWriter.newLine();
+                    }
                 }
+
+                bufferedWriter.close();
+                stmt.close();
+
+                getAverage(filepath);
+
+                connection.close();
+                System.out.println("Connection closed");
             }
-
-            bufferedWriter.close();
-            stmt.close();
-
-            String filepath = "path/results.txt";
-            getAverage(filepath);
-
-            con.close();
-            System.out.println("Connection closed");
-        }
-        catch (Exception e) {
-            System.out.println(e.toString());
+            catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -93,7 +94,7 @@ public class Main {
             avg = sum / list.size();
             System.out.println("The average of the List: " + avg);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 }
