@@ -14,23 +14,22 @@ public class Main {
 
         try {
             //MySQL Driver
-//            Class.forName("com.mysql.cj.jdbc.Driver");
-//            String url="jdbc:mysql://localhost:3306";
-//            Connection con = DriverManager.getConnection(url,"user", "password");
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            String url = "jdbc:mysql://localhost:8010";
+            Connection mySqlConnection = DriverManager.getConnection(url, "root", null);
 
             //MariaDB
-//            Connection con = DriverManager.getConnection(
-//                    "jdbc:mariadb://localhost:3305",
-//                    "user", "password"
-//            );
+            Connection mariaDBConnection = DriverManager.getConnection(
+                    "jdbc:mariadb://localhost:8009",
+                    "root", null
+            );
 
             //Postgresql
             Class.forName("org.postgresql.Driver");
             Connection con = DriverManager.getConnection(
-                    "jdbc:postgresql://localhost:5432/",
-                    "user", "password"
+                    "jdbc:postgresql://localhost:8008/",
+                    "postgres", null
             );
-
 
             System.out.println("Connection created");
             BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter("results.txt"));
