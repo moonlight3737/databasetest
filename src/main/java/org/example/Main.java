@@ -10,6 +10,8 @@ import org.apache.ibatis.jdbc.ScriptRunner;
 
 public class Main {
     public static void main(String[] args) {
+        String[] STATEMENTS = {"insert", "select", "update", "delete" };
+
         try {
             //MySQL Driver
 //            Class.forName("com.mysql.cj.jdbc.Driver");
@@ -36,29 +38,25 @@ public class Main {
 
             //Creating the Statement
             Statement stmt = con.createStatement();
+            for (String statement: STATEMENTS) {
+                //Running and Timing the Script
+                for (int i = 0; i < 100; i++) {
+                    //SQL script
+                    String script_path = String.format("path/%sScript.sql", statement);
+                    Reader table = new BufferedReader(new FileReader(script_path));
+                    //Script output to console turn off
+                    scriptRunner.setLogWriter(null);
 
-
-            //Running and Timing the Script
-            for (int i = 0; i < 100; i++) {
-                //SQL script
-                String script_path = "path/scripttable.sql";
-                Reader table = new BufferedReader(new FileReader(script_path));
-                //Script output to console turn off
-                scriptRunner.setLogWriter(null);
-
-                long start_time = System.currentTimeMillis();
-                //Runs the script
-                scriptRunner.runScript(table);
-                long end_time = System.currentTimeMillis();
-                long duration = (end_time - start_time);
-                bufferedWriter.write(String.valueOf(duration));
-                bufferedWriter.newLine();
-
-                //Query to drop a table
-                String drop_query = "DROP TABLE flight_logs";
-                stmt.execute(drop_query);
-                table.close();
+                    long start_time = System.currentTimeMillis();
+                    //Runs the script
+                    scriptRunner.runScript(table);
+                    long end_time = System.currentTimeMillis();
+                    long duration = (end_time - start_time);
+                    bufferedWriter.write(String.valueOf(duration));
+                    bufferedWriter.newLine();
+                }
             }
+
             bufferedWriter.close();
             stmt.close();
 
