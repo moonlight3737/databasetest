@@ -1,1 +1,0 @@
-INSERT INTO flight_logs (flight_number, departure_airport, arrival_airport, departure_date, arrival_date, departure_time, arrival_time, airline, fare_class, passenger_count) values (3561, 'ORJ', 'GTF', '2022-06-21', '2022-05-29', '3:56 AM', '6:16 PM', 'Delta', 'First', 1);

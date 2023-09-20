@@ -4,14 +4,13 @@ import java.io.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.ArrayList;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
-import com.github.cliftonlabs.json_simple.JsonKey;
 import com.github.cliftonlabs.json_simple.JsonObject;
 import org.apache.ibatis.jdbc.ScriptRunner;
 
@@ -44,6 +43,8 @@ public class Main {
                 Reader createTable = new BufferedReader(new FileReader(createScriptPath));
                 scriptRunner.runScript(createTable);
 
+                RandomDataGenerator rng = new RandomDataGenerator();
+
                 //Creating the Statement
                 Statement stmt = connection.createStatement();
                 for (String statement: STATEMENTS) {
@@ -52,14 +53,41 @@ public class Main {
                     JsonArray statementStats = new JsonArray();
 
                     //Running and Timing the Script
-                    for (int j = 0; j < 100; j++) {
+                    for (int j = 0; j < 10_000; j++) {
                         //SQL script
-                        String scriptPath = String.format("src\\main\\resources\\org\\example\\queries\\%sScript.sql", statement);
-                        Reader statementQuery = new BufferedReader(new FileReader(scriptPath));
+                        String scriptToExecute = "";
 
+                        switch (statement) {
+                            case "insert": {
+                                scriptToExecute = String.format("INSERT INTO flight_logs (flight_number, departure_airport, arrival_airport, departure_date, arrival_date, departure_time, arrival_time, airline, fare_class, passenger_count) " +
+                                        "VALUES (%s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %s);",
+                                        rng.getRandomInt(), rng.getRandomString(), rng.getRandomString(), rng.getRandomDate(), rng.getRandomDate(), rng.getRandomString(), rng.getRandomString(), rng.getRandomString(), rng.getRandomString(), rng.getRandomInt());
+                            }
+                                break;
+                            case "select": {
+                                scriptToExecute = String.format("SELECT * FROM flight_logs\n" +
+                                        "WHERE flight_number = %s;", rng.getRandomInt());
+                            }
+                                break;
+                            case "update": {
+                                scriptToExecute = String.format("UPDATE flight_logs\n" +
+                                        "SET airline = 'PatatAir'\n" +
+                                        "WHERE flight_number = %s;", rng.getRandomInt());
+                            }
+                                break;
+                            case "delete": {
+                                scriptToExecute = String.format("DELETE FROM flight_logs\n" +
+                                        "WHERE flight_number = %s;", rng.getRandomInt());
+                            }
+                                break;
+                            default:
+                                continue;
+                        }
+                        StringReader scriptReader = new StringReader(scriptToExecute);
+                        
                         long startTime = System.currentTimeMillis();
                         //Runs the script
-                        scriptRunner.runScript(statementQuery);
+                        scriptRunner.runScript(scriptReader);
                         long endTime = System.currentTimeMillis();
                         long duration = (endTime - startTime);
                         statementStats.add(duration);
@@ -67,6 +95,10 @@ public class Main {
 
                     databaseStats.put(statement, statementStats);
                 }
+
+                String dropScriptPath = "src\\main\\resources\\org\\example\\queries\\dropScript.sql";
+                Reader dropTable = new BufferedReader(new FileReader(dropScriptPath));
+                scriptRunner.runScript(dropTable);
 
                 try (PrintWriter out = new PrintWriter(new FileWriter(filepath))) {
                     out.write(databaseStats.toJson());
@@ -91,12 +123,15 @@ public class Main {
     private static void printFormattedStats(JsonObject collectedStats) {
         AtomicReference<String> consoleString = new AtomicReference<>("");
 
-
         Set<String> keySet = collectedStats.keySet();
         for (String key: keySet) {
             JsonArray statementStats = (JsonArray) collectedStats.get(key);
 
             Object[] convertedList = statementStats.toArray();
+            if (convertedList.length < 1) {
+                continue;
+            }
+
             int averageMs = Arrays.stream(convertedList).mapToInt(a -> Integer.parseInt(a.toString())).sum() / convertedList.length;
             String currentString = consoleString.get();
             consoleString.set(currentString + String.format("%s took %sms\n", key, averageMs));
