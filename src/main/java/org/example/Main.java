@@ -5,97 +5,103 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.github.cliftonlabs.json_simple.JsonArray;
+import com.github.cliftonlabs.json_simple.JsonKey;
+import com.github.cliftonlabs.json_simple.JsonObject;
 import org.apache.ibatis.jdbc.ScriptRunner;
 
 public class Main {
     public static void main(String[] args) {
-        String[] STATEMENTS = {"insert", "select", "update", "delete" };
+        String[] STATEMENTS = { "insert", "select", "update", "delete" };
+        String[] DATABASES = { "mariaDB", "mySQL", "postgreSQL" };
+        int[] PORTS = { 8009, 8010, 8008 };
 
-        try {
-            //MySQL Driver
-//            Class.forName("com.mysql.cj.jdbc.Driver");
-//            String url="jdbc:mysql://localhost:3306";
-//            Connection con = DriverManager.getConnection(url,"user", "password");
+        for (int i = 0; i < DATABASES.length; i++) {
+            String databaseName = DATABASES[i];
+            int port = PORTS[i];
+            String filepath = String.format("src\\main\\resources\\org\\example\\results\\%sResults.json", databaseName);
 
-            //MariaDB
-//            Connection con = DriverManager.getConnection(
-//                    "jdbc:mariadb://localhost:3305",
-//                    "user", "password"
-//            );
+            JsonObject databaseStats = new JsonObject();
 
-            //Postgresql
-            Class.forName("org.postgresql.Driver");
-            Connection con = DriverManager.getConnection(
-                    "jdbc:postgresql://localhost:5432/",
-                    "user", "password"
-            );
+            try {
+                //MySQL Driver
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                String url = String.format("jdbc:%s://localhost:%s/testing", databaseName.toLowerCase(), port);
+                String user = databaseName.equals("postgreSQL") ? "postgres" : "root";
+                Connection connection = DriverManager.getConnection(url, user, null);
 
+                BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filepath));
+                ScriptRunner scriptRunner = new ScriptRunner(connection);
+                scriptRunner.setLogWriter(null);
 
-            System.out.println("Connection created");
-            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter("results.txt"));
-            ScriptRunner scriptRunner = new ScriptRunner(con);
+                // Create table
+                String createScriptPath = "src\\main\\resources\\org\\example\\queries\\createScript.sql";
+                Reader createTable = new BufferedReader(new FileReader(createScriptPath));
+                scriptRunner.runScript(createTable);
 
-            //Creating the Statement
-            Statement stmt = con.createStatement();
-            for (String statement: STATEMENTS) {
-                //Running and Timing the Script
-                for (int i = 0; i < 100; i++) {
-                    //SQL script
-                    String script_path = String.format("path/%sScript.sql", statement);
-                    Reader table = new BufferedReader(new FileReader(script_path));
-                    //Script output to console turn off
-                    scriptRunner.setLogWriter(null);
+                //Creating the Statement
+                Statement stmt = connection.createStatement();
+                for (String statement: STATEMENTS) {
+                    System.out.printf("Testing %s!\n", statement);
 
-                    long start_time = System.currentTimeMillis();
-                    //Runs the script
-                    scriptRunner.runScript(table);
-                    long end_time = System.currentTimeMillis();
-                    long duration = (end_time - start_time);
-                    bufferedWriter.write(String.valueOf(duration));
-                    bufferedWriter.newLine();
+                    JsonArray statementStats = new JsonArray();
+
+                    //Running and Timing the Script
+                    for (int j = 0; j < 100; j++) {
+                        //SQL script
+                        String scriptPath = String.format("src\\main\\resources\\org\\example\\queries\\%sScript.sql", statement);
+                        Reader statementQuery = new BufferedReader(new FileReader(scriptPath));
+
+                        long startTime = System.currentTimeMillis();
+                        //Runs the script
+                        scriptRunner.runScript(statementQuery);
+                        long endTime = System.currentTimeMillis();
+                        long duration = (endTime - startTime);
+                        statementStats.add(duration);
+                    }
+
+                    databaseStats.put(statement, statementStats);
                 }
+
+                try (PrintWriter out = new PrintWriter(new FileWriter(filepath))) {
+                    out.write(databaseStats.toJson());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                bufferedWriter.close();
+                stmt.close();
+
+                System.out.println(databaseName + ":");
+                printFormattedStats(databaseStats);
+
+                connection.close();
             }
-
-            bufferedWriter.close();
-            stmt.close();
-
-            String filepath = "path/results.txt";
-            getAverage(filepath);
-
-            con.close();
-            System.out.println("Connection closed");
-        }
-        catch (Exception e) {
-            System.out.println(e.toString());
+            catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    private static void getAverage(String filepath ) {
-        try {
-            BufferedReader bufferedReader = new BufferedReader(new FileReader(filepath));
-            //Variables to get an average
-            String st;
-            ArrayList<Integer> list = new ArrayList<>();
+    private static void printFormattedStats(JsonObject collectedStats) {
+        AtomicReference<String> consoleString = new AtomicReference<>("");
 
-            // Condition holds true till
-            // there is character in a string
-            while ((st = bufferedReader.readLine()) != null) {
-                // Print the string
-                list.add(Integer.valueOf(st));
-                //System.out.println(st);
-            }
-            bufferedReader.close();
 
-            int sum = 0, avg;
-            for (Integer integer : list) {
-                sum = sum + integer;
-            }
+        Set<String> keySet = collectedStats.keySet();
+        for (String key: keySet) {
+            JsonArray statementStats = (JsonArray) collectedStats.get(key);
 
-            avg = sum / list.size();
-            System.out.println("The average of the List: " + avg);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            Object[] convertedList = statementStats.toArray();
+            int averageMs = Arrays.stream(convertedList).mapToInt(a -> Integer.parseInt(a.toString())).sum() / convertedList.length;
+            String currentString = consoleString.get();
+            consoleString.set(currentString + String.format("%s took %sms\n", key, averageMs));
         }
+
+        System.out.println(consoleString.get());
     }
 }
