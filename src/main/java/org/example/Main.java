@@ -22,7 +22,7 @@ public class Main {
     public static void main(String[] args) {
         String[] STATEMENTS = { "insert", "select", "update", "delete" };
         String[] DATABASES = { "mariaDB", "mySQL", "postgreSQL" };
-        int[] PORTS = { 3305, 3306, 5432 };
+        int[] PORTS = { 8008, 8009, 8010 };
 
         for (int i = 0; i < DATABASES.length; i++) {
             String databaseName = DATABASES[i];
@@ -36,8 +36,7 @@ public class Main {
                 Class.forName("com.mysql.cj.jdbc.Driver");
                 String url = String.format("jdbc:%s://localhost:%s/testing", databaseName.toLowerCase(), port);
                 String user = databaseName.equals("postgreSQL") ? "postgres" : "root";
-                String password = databaseName.equals("mariaDB") ? "maria" : "root";
-                Connection connection = DriverManager.getConnection(url, user, password);
+                Connection connection = DriverManager.getConnection(url, user, null);
 
                 BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filepath));
                 ScriptRunner scriptRunner = new ScriptRunner(connection);
