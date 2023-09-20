@@ -1,6 +1,7 @@
 package org.example;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -15,11 +16,13 @@ import com.github.cliftonlabs.json_simple.JsonKey;
 import com.github.cliftonlabs.json_simple.JsonObject;
 import org.apache.ibatis.jdbc.ScriptRunner;
 
+import static java.lang.Double.parseDouble;
+
 public class Main {
     public static void main(String[] args) {
         String[] STATEMENTS = { "insert", "select", "update", "delete" };
         String[] DATABASES = { "mariaDB", "mySQL", "postgreSQL" };
-        int[] PORTS = { 8009, 8010, 8008 };
+        int[] PORTS = { 3305, 3306, 5432 };
 
         for (int i = 0; i < DATABASES.length; i++) {
             String databaseName = DATABASES[i];
@@ -33,7 +36,8 @@ public class Main {
                 Class.forName("com.mysql.cj.jdbc.Driver");
                 String url = String.format("jdbc:%s://localhost:%s/testing", databaseName.toLowerCase(), port);
                 String user = databaseName.equals("postgreSQL") ? "postgres" : "root";
-                Connection connection = DriverManager.getConnection(url, user, null);
+                String password = databaseName.equals("mariaDB") ? "maria" : "root";
+                Connection connection = DriverManager.getConnection(url, user, password);
 
                 BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filepath));
                 ScriptRunner scriptRunner = new ScriptRunner(connection);
@@ -98,8 +102,14 @@ public class Main {
 
             Object[] convertedList = statementStats.toArray();
             int averageMs = Arrays.stream(convertedList).mapToInt(a -> Integer.parseInt(a.toString())).sum() / convertedList.length;
+            Arrays.sort(convertedList);
+            Object medianMs = Array.get(convertedList, convertedList.length/2);
+
             String currentString = consoleString.get();
-            consoleString.set(currentString + String.format("%s took %sms\n", key, averageMs));
+            consoleString.set(currentString + String.format("average %s took %sms\n", key, averageMs));
+            currentString = consoleString.get();
+            consoleString.set(currentString + String.format("median %s is %sms\n", key , medianMs));
+
         }
 
         System.out.println(consoleString.get());
