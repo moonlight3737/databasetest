@@ -15,6 +15,3 @@ Navigate to `org.example.databases` and run the following commands:
 ## Running Tests
 Run this application like you would run any Java application.
 Results can be found in `resources/org.example.results`
-
-
-
